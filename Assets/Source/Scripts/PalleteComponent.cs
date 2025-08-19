@@ -1,33 +1,32 @@
-using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
-public class PicturePaintingComponent : MonoBehaviour
+public class PalleteComponent : MonoBehaviour
 {
     [Header("Components")]
     [SerializeField] private Collider surfaceCollider;
     [SerializeField] private Renderer surfaceRenderer;
 
-    [Header("Brush Settings")]
-    [Tooltip("Color used for drawing on the texture.")]
-    public Color brushColor = Color.red;
-
-    [Tooltip("Brush thickness in pixels.")]
-    public float brushThickness = 8f;
-
     [Header("Script")]
     [SerializeField] List<Transform> fingertipTransforms = new List<Transform>();
+
+    [SerializeField] PicturePaintingComponent picture;
 
     string indexFingerTag;
     Texture2D textureCopy;
     Texture originalTexture;
+    UICanvasComponent UICanvas;
     Transform pointer;
-
-    public void PreStart(string indexFingerTag)
+    public void PreStart(string indexFingerTag, PicturePaintingComponent picture, UICanvasComponent UICanvas)
     {
         pointer = new GameObject("pointer").transform;
         pointer.SetParent(transform);
-
+        this.UICanvas = UICanvas;
+        this.picture = picture;
         this.indexFingerTag = indexFingerTag;
+        UICanvas.colorImage.color = picture.brushColor;
+
         if (surfaceRenderer == null)
         {
             Debug.LogError("VRFingerPainter: No Renderer found on GameObject.");
@@ -51,7 +50,7 @@ public class PicturePaintingComponent : MonoBehaviour
             return;
         }
 
-        // Clone the texture so we donâ€™t overwrite the original asset
+        // Clone the texture so we don’t overwrite the original asset
         Texture2D srcTex = originalTexture as Texture2D;
         if (srcTex == null)
         {
@@ -69,12 +68,8 @@ public class PicturePaintingComponent : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == indexFingerTag && !fingertipTransforms.Contains(other.transform))
-        {
             fingertipTransforms.Add(other.transform);
-            Debug.Log(other.gameObject.tag);
-        }
     }
-
     private void OnTriggerExit(Collider other)
     {
         if (other.gameObject.tag == indexFingerTag && fingertipTransforms.Contains(other.transform))
@@ -91,15 +86,11 @@ public class PicturePaintingComponent : MonoBehaviour
             pointer.localPosition = new Vector3(pointer.localPosition.x, 0.1f, pointer.localPosition.z);
             Ray ray = new Ray(pointer.position, -transform.up);
             if (Physics.Raycast(ray, out RaycastHit hit, 0.5f))
-                PaintAt();
+                GetColor();
         }
     }
 
-    /// <summary>
-    /// Paints a filled circle on textureCopy at the hit UV coordinate.
-    /// </summary>
-    /// <param name="hit">RaycastHit containing textureCoord (Vector2 uv).</param>
-    private void PaintAt()
+    private void GetColor()
     {
         Vector3 pos = pointer.localPosition / 10f + Vector3.one / 2f;
         Vector2 uv = new Vector2(pos.x, pos.z);
@@ -110,59 +101,11 @@ public class PicturePaintingComponent : MonoBehaviour
         int x = Mathf.FloorToInt(texWidth - uv.x * texWidth);
         int y = Mathf.FloorToInt(texHeight - uv.y * texHeight);
         Debug.Log(pos + " " + uv + " " + x + " " + y);
-        int radius = Mathf.CeilToInt(brushThickness);
-
-        // Loop over a square region and set pixels inside the circle
-        for (int dx = -radius; dx <= radius; dx++)
+        Color color = textureCopy.GetPixel(x, y);
+        if (color.a > 0)
         {
-            for (int dy = -radius; dy <= radius; dy++)
-            {
-                if (dx * dx + dy * dy <= radius * radius)
-                {
-                    int px = x + dx;
-                    int py = y + dy;
-                    if (px >= 0 && px < texWidth && py >= 0 && py < texHeight)
-                    {
-                        textureCopy.SetPixel(px, py, brushColor);
-                    }
-                }
-            }
-        }
-        textureCopy.Apply();
-    }
-    public void SetTexture(Texture2D texture)
-    {
-        textureCopy = texture;
-        textureCopy.Apply();
-    }
-    public Texture2D GetTexture()
-    {
-        return textureCopy;
-    }
-    public void Clear()
-    {
-        if (textureCopy == null)
-            return;
-
-        int width = textureCopy.width;
-        int height = textureCopy.height;
-        Color[] fillColors = new Color[width * height];
-
-        for (int i = 0; i < fillColors.Length; i++)
-        {
-            fillColors[i] = Color.white;
-        }
-
-        textureCopy.SetPixels(fillColors);
-        textureCopy.Apply();
-    }
-
-    void OnDestroy()
-    {
-        // Restore the original texture to avoid leaking our clone
-        if (surfaceRenderer != null && originalTexture != null)
-        {
-            surfaceRenderer.material.mainTexture = originalTexture;
+            picture.brushColor = color;
+            UICanvas.colorImage.color = color;
         }
     }
 }
