@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public class LoadSavePictureSystem : MonoBehaviour
 {
@@ -17,7 +18,7 @@ public class LoadSavePictureSystem : MonoBehaviour
     {
         lines.Add(newLine);
     }
-    public void Save()
+    public async void Save()
     {
         if (isWorking) return;
         isWorking = true;
@@ -26,10 +27,12 @@ public class LoadSavePictureSystem : MonoBehaviour
         DataWrapper wrapper = new DataWrapper(lines);
         File.WriteAllText(filePath, JsonUtility.ToJson(wrapper));
         Debug.Log("Picture saved to: " + filePath + " lines count:" + lines.Count);
+
+        await Task.Delay(100);
         isWorking = false;
     }
 
-    public void Load()
+    public async void Load()
     {
         if (isWorking) return;
         isWorking = true;
@@ -59,6 +62,7 @@ public class LoadSavePictureSystem : MonoBehaviour
         picture.SetLoadedDatas(lines);
         Debug.Log("Picture loaded! Lines:" + lines.Count);
 
+        await Task.Delay(100);
         isWorking = false;
     }
 

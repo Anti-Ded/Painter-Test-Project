@@ -6,6 +6,7 @@ public sealed class GameConfig : ScriptableObject
 {
     public Color startBrushColor = Color.red;
     public int startBrushSize = 8;
-    public int drawMaxCount = 32;
+    public int pixelsPaintedPerFrame = 1000;
+    public float minimalDrawFPS = 30;
 }
 

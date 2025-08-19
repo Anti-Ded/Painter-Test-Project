@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class PicturePaintingComponent : MonoBehaviour
 {
-    
+
     [Header("Components")]
     [SerializeField] private Collider surfaceCollider;
     [SerializeField] private Renderer surfaceRenderer;
@@ -17,23 +17,22 @@ public class PicturePaintingComponent : MonoBehaviour
     LoadSavePictureSystem loadSaver;
 
     [Header("Script")]
-    [SerializeField] int drawMaxCount = 16;
     [SerializeField] SerializedDictionary<Transform, LineData> dictFingerLineData = new SerializedDictionary<Transform, LineData>();
     [SerializeField] List<DrawData> drawDatas = new List<DrawData>();
     public int brushRadius = 8;
     public Color brushColor = Color.red;
-
+    GameConfig gameConfig;
     public void PreStart(string indexFingerTag, LoadSavePictureSystem loadSaver, GameConfig gameConfig)
     {
         pointer = new GameObject("pointer").transform;
         pointer.SetParent(transform);
 
+        this.gameConfig = gameConfig;
         this.loadSaver = loadSaver;
         this.indexFingerTag = indexFingerTag;
 
         brushColor = gameConfig.startBrushColor;
         brushRadius = gameConfig.startBrushSize;
-        drawMaxCount = gameConfig.drawMaxCount;
 
         if (surfaceRenderer == null)
         {
@@ -105,11 +104,11 @@ public class PicturePaintingComponent : MonoBehaviour
     void AddDrawDatas(LineData lineData)
     {
         float distance = Vector2Int.Distance(lineData.endPoint, lineData.startPoint);
-        for (int i = 0; i < distance; i++)
+        for (float i = 0; i < distance; i++)
         {
             DrawData newDraw = new DrawData();
-            int x = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.x, lineData.startPoint.x, i / distance));
-            int y = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.y, lineData.startPoint.y, i / distance));
+            int x = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.x, lineData.startPoint.x, 1f - i / distance));
+            int y = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.y, lineData.startPoint.y, 1f - i / distance));
             newDraw.point = new Vector2Int(x, y);
             newDraw.color = lineData.color;
             newDraw.radius = lineData.radius;
@@ -134,19 +133,23 @@ public class PicturePaintingComponent : MonoBehaviour
     }
     public void Upd()
     {
+        int drawPixelsCounter = gameConfig.pixelsPaintedPerFrame;
         // Draw DrawDatas to picture
         if (drawDatas.Count > 0)
-            for (int i = 0; i < Mathf.Min(drawMaxCount, drawDatas.Count); i++) // max draw count to prevent lags
-            {
-                Paint(drawDatas[drawDatas.Count - 1]);
-                drawDatas.RemoveAt(drawDatas.Count - 1);
-                textureCopy.Apply();
-            }
+            for (int i = drawDatas.Count - 1; i >= 0; i--)
+                if (drawPixelsCounter > 0 && Time.deltaTime < 1f / gameConfig.minimalDrawFPS && drawDatas.Count > 0) // max draw count to prevent lags
+                {
+                    drawPixelsCounter -= Paint(drawDatas[0]);
+                    drawDatas.RemoveAt(0);
+                    textureCopy.Apply();
+                }
+                else break;
     }
 
     // Paints a filled circle on textureCopy at the UV coordinate.
-    private void Paint(DrawData drawData)
+    private int Paint(DrawData drawData)
     {
+        int pixelsCounter = 0;
         int texWidth = textureCopy.width;
         int texHeight = textureCopy.height;
         int radius = drawData.radius;
@@ -156,11 +159,13 @@ public class PicturePaintingComponent : MonoBehaviour
             for (int dy = -radius; dy <= radius; dy++)
                 if (dx * dx + dy * dy <= radius * radius)
                 {
+                    pixelsCounter++;
                     int px = drawData.point.x + dx;
                     int py = drawData.point.y + dy;
                     if (px >= 0 && px < texWidth && py >= 0 && py < texHeight)
                         textureCopy.SetPixel(px, py, drawData.color);
                 }
+        return pixelsCounter;
     }
     public void SetLoadedDatas(List<LineData> datas)
     {
@@ -172,7 +177,7 @@ public class PicturePaintingComponent : MonoBehaviour
     {
         if (textureCopy == null)
             return;
-
+        drawDatas.Clear();
         int width = textureCopy.width;
         int height = textureCopy.height;
         Color[] fillColors = new Color[width * height];
