@@ -1,16 +1,21 @@
 using UnityEngine;
 using System;
 using System.IO;
+using System.Collections.Generic;
 
 public class LoadSavePictureSystem : MonoBehaviour
 {
     PicturePaintingComponent picture;
-    
+    [Header("Script")]
+    [SerializeField] List<LineData> lines = new List<LineData>();
     public void Prestart(PicturePaintingComponent picture)
     {
         this.picture = picture;
     }
-
+    public void AddLine(LineData newLine)
+    {
+        lines.Add(newLine);
+    }
     public void Save()
     {
         Texture2D texture = picture.GetTexture();

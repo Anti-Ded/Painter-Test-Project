@@ -18,15 +18,15 @@ public class StarterSystem : MonoBehaviour
         UICanvas.clearButton.onClick.AddListener(picture.Clear);
 
         UICanvas.palleteImage.Prestart(picture, UICanvas);
-        picture.PreStart(indexFingerTag);
+        picture.PreStart(indexFingerTag, loadSaver);
 
         UICanvas.brushSizeSlider.onValueChanged.AddListener(BrushSize);
-        UICanvas.brushSizeSlider.value = picture.brushThickness;
+        UICanvas.brushSizeSlider.value = picture.brushRadius;
         UICanvas.brushSizeText.text = UICanvas.brushSizeSlider.value.ToString("F0");
     }
     void BrushSize(float value)
     {
-        picture.brushThickness = value;
+        picture.brushRadius = Mathf.RoundToInt(value);
         UICanvas.brushSizeText.text = UICanvas.brushSizeSlider.value.ToString("F0");
     }
     private void Update()
