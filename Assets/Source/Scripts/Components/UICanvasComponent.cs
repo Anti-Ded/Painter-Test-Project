@@ -9,4 +9,7 @@ public class UICanvasComponent : MonoBehaviour
     public Button loadButton;
     public Button clearButton;
     public Image colorImage;
+    public Slider brushSizeSlider;
+    public Text brushSizeText;
+    public PalleteImageComponent palleteImage;
 }

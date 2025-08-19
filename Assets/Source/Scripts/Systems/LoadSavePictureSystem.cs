@@ -4,24 +4,13 @@ using System.IO;
 
 public class LoadSavePictureSystem : MonoBehaviour
 {
-    [SerializeField] string indexFingerTag;
-    [SerializeField] PicturePaintingComponent picture;
-    [SerializeField] UICanvasComponent UICanvas;
-    [SerializeField] PalleteComponent pallete;
-    private void Awake()
+    PicturePaintingComponent picture;
+    
+    public void Prestart(PicturePaintingComponent picture)
     {
-        UICanvas.saveButton.onClick.AddListener(Save);
-        UICanvas.loadButton.onClick.AddListener(Load);
-        UICanvas.clearButton.onClick.AddListener(picture.Clear);
+        this.picture = picture;
+    }
 
-        pallete.PreStart(indexFingerTag, picture, UICanvas);
-        picture.PreStart(indexFingerTag);
-    }
-    private void Update()
-    {
-        picture.Upd();
-        pallete.Upd();
-    }
     public void Save()
     {
         Texture2D texture = picture.GetTexture();
@@ -42,7 +31,7 @@ public class LoadSavePictureSystem : MonoBehaviour
 
         string filePath = Path.Combine(Application.persistentDataPath, "myPicture.json");
         File.WriteAllText(filePath, JsonUtility.ToJson(data));
-        Debug.Log("Game data saved to: " + filePath);
+        Debug.Log("Picture saved to: " + filePath);
     }
 
     public void Load()
@@ -76,6 +65,7 @@ public class LoadSavePictureSystem : MonoBehaviour
         texture.SetPixels(colors);
         texture.Apply();
         picture.SetTexture(texture);
+        Debug.Log("Picture loaded");
     }
 
     // Serializable pixel data (RGBA) for JSON conversion

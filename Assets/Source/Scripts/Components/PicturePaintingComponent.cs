@@ -69,10 +69,7 @@ public class PicturePaintingComponent : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == indexFingerTag && !fingertipTransforms.Contains(other.transform))
-        {
             fingertipTransforms.Add(other.transform);
-            Debug.Log(other.gameObject.tag);
-        }
     }
 
     private void OnTriggerExit(Collider other)
@@ -109,7 +106,6 @@ public class PicturePaintingComponent : MonoBehaviour
 
         int x = Mathf.FloorToInt(texWidth - uv.x * texWidth);
         int y = Mathf.FloorToInt(texHeight - uv.y * texHeight);
-        Debug.Log(pos + " " + uv + " " + x + " " + y);
         int radius = Mathf.CeilToInt(brushThickness);
 
         // Loop over a square region and set pixels inside the circle
@@ -132,8 +128,9 @@ public class PicturePaintingComponent : MonoBehaviour
     }
     public void SetTexture(Texture2D texture)
     {
-        textureCopy = texture;
+        textureCopy = Instantiate(texture);
         textureCopy.Apply();
+        surfaceRenderer.material.mainTexture = textureCopy;
     }
     public Texture2D GetTexture()
     {
@@ -155,6 +152,7 @@ public class PicturePaintingComponent : MonoBehaviour
 
         textureCopy.SetPixels(fillColors);
         textureCopy.Apply();
+        Debug.Log("Picture cleared");
     }
 
     void OnDestroy()
