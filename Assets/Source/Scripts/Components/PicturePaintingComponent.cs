@@ -5,18 +5,10 @@ using UnityEngine.Rendering;
 
 public class PicturePaintingComponent : MonoBehaviour
 {
-    [SerializeField] float drawDistance = 0.01f;
-    [SerializeField] int drawMaxCount = 16;
+    
     [Header("Components")]
     [SerializeField] private Collider surfaceCollider;
     [SerializeField] private Renderer surfaceRenderer;
-
-    [Header("Brush Settings")]
-    [Tooltip("Color used for drawing on the texture.")]
-    public Color brushColor = Color.red;
-
-    [Tooltip("Brush thickness in pixels.")]
-    public int brushRadius = 8;
 
     string indexFingerTag;
     Texture2D textureCopy;
@@ -25,16 +17,24 @@ public class PicturePaintingComponent : MonoBehaviour
     LoadSavePictureSystem loadSaver;
 
     [Header("Script")]
+    [SerializeField] int drawMaxCount = 16;
     [SerializeField] SerializedDictionary<Transform, LineData> dictFingerLineData = new SerializedDictionary<Transform, LineData>();
     [SerializeField] List<DrawData> drawDatas = new List<DrawData>();
+    public int brushRadius = 8;
+    public Color brushColor = Color.red;
 
-    public void PreStart(string indexFingerTag, LoadSavePictureSystem loadSaver)
+    public void PreStart(string indexFingerTag, LoadSavePictureSystem loadSaver, GameConfig gameConfig)
     {
         pointer = new GameObject("pointer").transform;
         pointer.SetParent(transform);
 
         this.loadSaver = loadSaver;
         this.indexFingerTag = indexFingerTag;
+
+        brushColor = gameConfig.startBrushColor;
+        brushRadius = gameConfig.startBrushSize;
+        drawMaxCount = gameConfig.drawMaxCount;
+
         if (surfaceRenderer == null)
         {
             Debug.LogError("VRFingerPainter: No Renderer found on GameObject.");
@@ -99,21 +99,23 @@ public class PicturePaintingComponent : MonoBehaviour
             loadSaver.AddLine(lineData);
             dictFingerLineData.Remove(other.transform);
 
-            // Add DrawDatas
-            float distance = Vector2Int.Distance(lineData.endPoint, lineData.startPoint);
-            for (int i = 0; i < distance / drawDistance; i++)
-            {
-                DrawData newDraw = new DrawData();
-                int x = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.x, lineData.startPoint.x, i / distance));
-                int y = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.y, lineData.startPoint.y, i / distance));
-                newDraw.point = new Vector2Int(x, y);
-                newDraw.color = brushColor;
-                newDraw.radius = brushRadius;
-                drawDatas.Add(newDraw);
-            }
+            AddDrawDatas(lineData);
         }
     }
-
+    void AddDrawDatas(LineData lineData)
+    {
+        float distance = Vector2Int.Distance(lineData.endPoint, lineData.startPoint);
+        for (int i = 0; i < distance; i++)
+        {
+            DrawData newDraw = new DrawData();
+            int x = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.x, lineData.startPoint.x, i / distance));
+            int y = Mathf.RoundToInt(Mathf.Lerp(lineData.endPoint.y, lineData.startPoint.y, i / distance));
+            newDraw.point = new Vector2Int(x, y);
+            newDraw.color = lineData.color;
+            newDraw.radius = lineData.radius;
+            drawDatas.Add(newDraw);
+        }
+    }
     Vector2Int GetUVCoordinates(Transform target)
     {
         // Calculating of Start Line position
@@ -138,33 +140,15 @@ public class PicturePaintingComponent : MonoBehaviour
             {
                 Paint(drawDatas[drawDatas.Count - 1]);
                 drawDatas.RemoveAt(drawDatas.Count - 1);
+                textureCopy.Apply();
             }
-        /*   if (textureCopy == null || fingertipTransforms == null)
-               return;
-
-           foreach (var fingertip in fingertipTransforms)
-           {
-               pointer.position = fingertip.position;
-               pointer.localPosition = new Vector3(pointer.localPosition.x, 0.1f, pointer.localPosition.z);
-               Ray ray = new Ray(pointer.position, -transform.up);
-               if (Physics.Raycast(ray, out RaycastHit hit, 0.5f))
-                   PaintAt();
-           }*/
     }
 
-    /// <summary>
-    /// Paints a filled circle on textureCopy at the hit UV coordinate.
-    /// </summary>
-    /// <param name="hit">RaycastHit containing textureCoord (Vector2 uv).</param>
+    // Paints a filled circle on textureCopy at the UV coordinate.
     private void Paint(DrawData drawData)
     {
-        Vector2Int uv = drawData.point;
-
         int texWidth = textureCopy.width;
         int texHeight = textureCopy.height;
-
-        int x = texWidth - uv.x * texWidth;
-        int y = texHeight - uv.y * texHeight;
         int radius = drawData.radius;
 
         // Loop over a square region and set pixels inside the circle
@@ -172,23 +156,17 @@ public class PicturePaintingComponent : MonoBehaviour
             for (int dy = -radius; dy <= radius; dy++)
                 if (dx * dx + dy * dy <= radius * radius)
                 {
-                    int px = x + dx;
-                    int py = y + dy;
+                    int px = drawData.point.x + dx;
+                    int py = drawData.point.y + dy;
                     if (px >= 0 && px < texWidth && py >= 0 && py < texHeight)
                         textureCopy.SetPixel(px, py, drawData.color);
                 }
-
-        textureCopy.Apply();
     }
-    public void SetTexture(Texture2D texture)
+    public void SetLoadedDatas(List<LineData> datas)
     {
-        textureCopy = Instantiate(texture);
-        textureCopy.Apply();
-        surfaceRenderer.material.mainTexture = textureCopy;
-    }
-    public Texture2D GetTexture()
-    {
-        return textureCopy;
+        Clear();
+        foreach (var data in datas)
+            AddDrawDatas(data);
     }
     public void Clear()
     {
@@ -200,19 +178,18 @@ public class PicturePaintingComponent : MonoBehaviour
         Color[] fillColors = new Color[width * height];
 
         for (int i = 0; i < fillColors.Length; i++)
-        {
             fillColors[i] = Color.white;
-        }
 
         textureCopy.SetPixels(fillColors);
         textureCopy.Apply();
         Debug.Log("Picture cleared");
     }
+}
 
-    [Serializable] class DrawData
-    {
-        public Vector2Int point;
-        public int radius;
-        public Color color;
-    }
+[Serializable]
+public class DrawData
+{
+    public Vector2Int point;
+    public int radius;
+    public Color color;
 }

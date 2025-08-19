@@ -8,6 +8,7 @@ public class StarterSystem : MonoBehaviour
     [SerializeField] LoadSavePictureSystem loadSaver;
     [SerializeField] PicturePaintingComponent picture;
     [SerializeField] UICanvasComponent UICanvas;
+    [SerializeField] GameConfig gameConfig;
 
     private void Awake()
     {
@@ -17,12 +18,14 @@ public class StarterSystem : MonoBehaviour
         UICanvas.loadButton.onClick.AddListener(loadSaver.Load);
         UICanvas.clearButton.onClick.AddListener(picture.Clear);
 
+        UICanvas.colorImage.color = gameConfig.startBrushColor;
+
         UICanvas.palleteImage.Prestart(picture, UICanvas);
-        picture.PreStart(indexFingerTag, loadSaver);
+        picture.PreStart(indexFingerTag, loadSaver, gameConfig);
 
         UICanvas.brushSizeSlider.onValueChanged.AddListener(BrushSize);
-        UICanvas.brushSizeSlider.value = picture.brushRadius;
-        UICanvas.brushSizeText.text = UICanvas.brushSizeSlider.value.ToString("F0");
+        UICanvas.brushSizeSlider.value = gameConfig.startBrushSize;
+        UICanvas.brushSizeText.text = gameConfig.startBrushSize.ToString("F0");
     }
     void BrushSize(float value)
     {

@@ -8,6 +8,7 @@ public class LoadSavePictureSystem : MonoBehaviour
     PicturePaintingComponent picture;
     [Header("Script")]
     [SerializeField] List<LineData> lines = new List<LineData>();
+    bool isWorking;
     public void Prestart(PicturePaintingComponent picture)
     {
         this.picture = picture;
@@ -18,29 +19,21 @@ public class LoadSavePictureSystem : MonoBehaviour
     }
     public void Save()
     {
-        Texture2D texture = picture.GetTexture();
-        if (texture == null)
-            Debug.LogError("Texture2DJsonConverter.Serialize: texture is null");
-
-        TextureData data = new TextureData
-        {
-            width = texture.width,
-            height = texture.height,
-            format = texture.format
-        };
-
-        Color[] colors = texture.GetPixels();
-        data.pixels = new Pixel[colors.Length];
-        for (int i = 0; i < colors.Length; i++)
-            data.pixels[i] = new Pixel(colors[i]);
-
+        if (isWorking) return;
+        isWorking = true;
+     
         string filePath = Path.Combine(Application.persistentDataPath, "myPicture.json");
-        File.WriteAllText(filePath, JsonUtility.ToJson(data));
-        Debug.Log("Picture saved to: " + filePath);
+        DataWrapper wrapper = new DataWrapper(lines);
+        File.WriteAllText(filePath, JsonUtility.ToJson(wrapper));
+        Debug.Log("Picture saved to: " + filePath + " lines count:" + lines.Count);
+        isWorking = false;
     }
 
     public void Load()
     {
+        if (isWorking) return;
+        isWorking = true;
+
         string filePath = Path.Combine(Application.persistentDataPath, "myPicture.json");
         if (!File.Exists(filePath))
         {
@@ -53,51 +46,29 @@ public class LoadSavePictureSystem : MonoBehaviour
             Debug.Log("File json is Empty");
             return;
         }
-        TextureData data = JsonUtility.FromJson<TextureData>(json);
-        if (data == null)
+        DataWrapper data = JsonUtility.FromJson<DataWrapper>(json);
+        if (data == null || data.lines.Count == 0)
         {
-            Debug.LogError("Texture2DJsonConverter.Deserialize: failed to parse JSON");
+            Debug.Log("failed to parse JSON or data is null");
             return;
         }
 
-        Texture2D texture = new Texture2D(data.width, data.height, data.format, false);
-        Color[] colors = new Color[data.pixels.Length];
-        for (int i = 0; i < data.pixels.Length; i++)
-        {
-            colors[i] = data.pixels[i].ToColor();
-        }
+        lines.Clear();
+        foreach (var item in data.lines)
+            lines.Add(item);
+        picture.SetLoadedDatas(lines);
+        Debug.Log("Picture loaded! Lines:" + lines.Count);
 
-        texture.SetPixels(colors);
-        texture.Apply();
-        picture.SetTexture(texture);
-        Debug.Log("Picture loaded");
+        isWorking = false;
     }
 
-    // Serializable pixel data (RGBA) for JSON conversion
-    [Serializable]
-    private struct Pixel
+    [Serializable] class DataWrapper
     {
-        public float r, g, b, a;
-        public Pixel(Color color)
-        {
-            r = color.r;
-            g = color.g;
-            b = color.b;
-            a = color.a;
-        }
-        public Color ToColor()
-        {
-            return new Color(r, g, b, a);
-        }
-    }
+        public List<LineData> lines;
 
-    // Container for texture metadata and pixel array
-    [Serializable]
-    private class TextureData
-    {
-        public int width;
-        public int height;
-        public TextureFormat format;
-        public Pixel[] pixels;
+        public DataWrapper(List<LineData> lines)
+        {
+            this.lines = lines;
+        }
     }
 }
